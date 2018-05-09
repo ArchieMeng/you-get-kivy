@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from threading import Thread
 from time import sleep
@@ -23,7 +24,6 @@ def get_info(url):
 
 
 def download(url, **kwargs):
-    # Todo yield percentage for caller
     info = get_info(url)
     if isinstance(info, dict):
         you_get.download_main(
@@ -50,6 +50,10 @@ def validate_url(url):
     except Exception as e:
         return e
     return true_url
+
+
+def fix_bilibili_title(title):
+    return re.sub(r'<.*?>', "", title)
 
 
 def test_validate(url):

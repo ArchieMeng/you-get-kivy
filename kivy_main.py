@@ -16,32 +16,48 @@ from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from videos_fetcher import *
 
 
+you_get
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
     ''' Adds selection and focus behaviour to the view. '''
 
 
 class VideoItem(RecycleDataViewBehavior, BoxLayout):
-    # Todo update progress bar info
     index = None
     selected = BooleanProperty(False)
     selectable = BooleanProperty(True)
     video_title = StringProperty()  # used by title label
     video_ext = StringProperty()
     video_url = StringProperty()
-    video_list = ObjectProperty()
-    data_item = ObjectProperty()
-    download_info = ObjectProperty({
-                    'stop': False,
-                    'received': 0,
-                    'total_size': 100
-                })
+
+    def __init__(self):
+
+        super().__init__()
+        # schedule a task to update progress bar
+        Clock.schedule_interval(lambda dt: self.set_progress_bar_values(), 1 / 4.)
+        self.download_thread = None
 
     def refresh_view_attrs(self, rv, index, data):
         ''' Catch and handle the view changes '''
         self.index = index
         return super(VideoItem, self).refresh_view_attrs(
             rv, index, data)
+
+    def get_download_info(self):
+        if self.download_info:
+            return self.download_info
+        else:
+            self.download_info = {
+                'stop': True,
+                'received': 0.,
+                'total_size': 100.
+            }
+
+    @mainthread
+    def set_progress_bar_values(self):
+        info = self.get_download_info()
+        self.ids.video_progress_bar.value = info['received']
+        self.ids.video_progress_bar.max = info['total_size']
 
     def on_touch_down(self, touch):
         ''' Add selection on touch down '''
@@ -52,23 +68,27 @@ class VideoItem(RecycleDataViewBehavior, BoxLayout):
 
     def apply_selection(self, rv, index, is_selected):
         # Todo implement resume / pause function
+        # Todo implement video file open operation
         ''' Respond to the selection of items in the view. '''
         ''' Video items on_click function '''
         self.selected = is_selected
         if is_selected:
-            print("select {0}".format(rv.data[index]))
+            print("select {}:{}".format(self.video_title, self.download_info))
             # rv.validate_then_download(self.video_url, self.index)
             # change download status pause/resume
-            if self.download_info:
-                self.download_info['stop'] = self.download_info['stop'] if self.download_info['stop'] else True
-                if not self.download_info['stop']:
-                    download_thread = Thread(
+            download_info = self.get_download_info()
+            if download_info:
+                download_info['stop'] = (not download_info['stop'])
+                # only one thread running
+                if not download_info['stop'] and \
+                        (self.download_thread is None or not self.download_thread.is_alive()):
+                    self.download_thread = Thread(
                         target=download,
                         args=(self.video_url,),
-                        kwargs={'download_info': self.download_info},
+                        kwargs={'download_info': download_info},
                         daemon=True
                     )
-                    download_thread.start()
+                    self.download_thread.start()
 
 
 class VideoListView(RecycleView):
@@ -80,19 +100,33 @@ class VideoListView(RecycleView):
 
     def add_video_item(self, title, ext, url, **kwargs):
         index = len(self.data)
+        download_info = kwargs.get(
+            'download_info',
+            {
+                'stop': False,
+                'received': 0,
+                'total_size': 100
+            }
+        )
+        if 'download_info' in kwargs:
+            kwargs.pop('download_info')
         data = {
             'video_title': str(title),
             'video_ext': ext,
             'video_url': str(url),
+            'download_info': download_info,
             **kwargs
         }
         print(data)
-        data['data_item'] = data
         self.data.append(data)
         return index
 
     @mainthread
     def set_video_item(self, idx, title, ext, url, **kwargs):
+        # # fix bilibili video title
+        # if 'bilibili' in url:
+        #     title = fix_bilibili_title(title)
+
         self.data[idx] = {
             'video_title': str(title),
             'video_ext': ext,
@@ -100,7 +134,6 @@ class VideoListView(RecycleView):
             **kwargs
         }
         print(self.data[idx])
-        self.data[idx]['data_item'] = self.data[idx]
 
     @mainthread
     def remove_video_item(self, idx):
@@ -115,6 +148,11 @@ class VideoListView(RecycleView):
         :return:
         """
         url = validate_url(url)
+        download_info = {
+            'stop': False,
+            'received': 0,
+            'total_size': 100
+        }
         if isinstance(url, Exception):
             # URL is not legal
             popup = Popup(
@@ -126,7 +164,7 @@ class VideoListView(RecycleView):
                 size_hint=(.6, .4)
             )
             traceback.print_exception(type(url), url, url.__traceback__)
-            self.set_video_item(data_idx, url, "Failed", url)
+            self.set_video_item(data_idx, url, "Failed", url, download_info=download_info)
             Clock.schedule_once(
                 popup.open,
                 0
@@ -137,12 +175,6 @@ class VideoListView(RecycleView):
             if info:
                 title, ext = info['title'], info['ext']
                 print("add video", title)
-                # Todo update progress bar with download info
-                download_info = {
-                    'stop': False,
-                    'received': 0,
-                    'total_size': 100
-                }
                 self.set_video_item(data_idx, title, ext, url, download_info=download_info)
                 download_thread = Thread(
                     target=download,
@@ -160,7 +192,7 @@ class VideoListView(RecycleView):
                     ),
                     size_hint=(.6, .4)
                 )
-                self.set_video_item(data_idx, url, "Failed", url)
+                self.set_video_item(data_idx, url, "Failed", url, download_info=download_info)
                 Clock.schedule_once(
                     popup.open,
                     0
@@ -198,7 +230,6 @@ class YouGetApp(App):
                 pickle.dump(list(self.video_list.data), fp)
             # stop all downloading threads
             for data in self.video_list.data:
-                # Todo fix not download_info error in data
                 if 'download_info' in data:
                     data['download_info']['stop'] = True
 

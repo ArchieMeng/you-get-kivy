@@ -10,11 +10,11 @@
         id: video_title
         text: video_item.video_title + '.' + video_item.video_ext
         font_size: '12sp'
+        font_name: "FZQKBYJT"
     ProgressBar:
-    # Todo view data in data item to update values
         id: video_progress_bar
-        value: video_item.download_info['received'] or 0 if video_item.download_info else 0
-        max: video_item.download_info['total_size'] or 100 if video_item.download_info else 100
+        value: 0
+        max: 100
 
 
 <YouGetWidget>:

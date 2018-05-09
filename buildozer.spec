@@ -1,10 +1,10 @@
 [app]
 
 # (str) Title of your application
-title = YouGetKivy
+title = YouGet
 
 # (str) Package name
-package.name = you_get
+package.name = YouGet
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = org.test
@@ -36,11 +36,11 @@ version = 0.1
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
-requirements = python3crystax==3.6, cython==0.24, kivy, openssl, raven
+requirements = kivy, python3crystax==3.6, cython, openssl
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
-# requirements.source.kivy = ../../kivy
+requirements.source.kivy = ~/Github/kivy
 
 # (list) Garden requirements
 #garden_requirements =
@@ -68,14 +68,14 @@ orientation = portrait
 osx.python_version = 3.6
 
 # Kivy version to use
-osx.kivy_version = 1.10.1.dev0
+# osx.kivy_version = 1.10
 
 #
 # Android specific
 #
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = True
+fullscreen = 0
 
 # (string) Presplash background color (for new android toolchain)
 # Supported formats are: #RRGGBB #AARRGGBB or one of the following names:
@@ -91,30 +91,30 @@ android.permissions = INTERNET
 android.api = 19
 
 # (int) Minimum API required
-android.minapi = 19
+#android.minapi = 19
 
 # (int) Android SDK version to use
 android.sdk = 23
 
 # (str) Android NDK version to use
-#android.ndk = 9c
+# android.ndk = r10
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 #android.private_storage = True
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
-android.ndk_path = ~/crystax-ndk
+android.ndk_path = ~/crystax-ndk-10.3.2
 
 # (str) Android SDK directory (if empty, it will be automatically downloaded.)
 android.sdk_path = ~/android-sdk-linux
 
 # (str) ANT directory (if empty, it will be automatically downloaded.)
-# android.ant_path =
+# android.ant_path = /home/archiemeng/Programs/apache-ant-1.10.3
 
 # (bool) If True, then skip trying to update the Android sdk
 # This can be useful to avoid excess Internet downloads or save time
 # when an update is due and you just want to test/build your package
-android.skip_update = True
+# android.skip_update = False
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.renpy.android.PythonActivity
@@ -146,8 +146,11 @@ android.skip_update = True
 # bootstrap)
 #android.gradle_dependencies =
 
-# (str) python-for-android branch to use, defaults to master
-#p4a.branch = stable
+# (list) Java classes to add as activities to the manifest.
+#android.add_activites = com.example.ExampleActivity
+
+# (str) python-for-android branch to use, defaults to stable
+# p4a.branch = master
 
 # (str) OUYA Console category. Should be one of GAME or APP
 # If you leave this blank, OUYA support will not be enabled
@@ -158,6 +161,9 @@ android.skip_update = True
 
 # (str) XML file to include as an intent filters in <activity> tag
 #android.manifest.intent_filters =
+
+# (str) launchMode to set for the main activity
+#android.manifest.launch_mode = standard
 
 # (list) Android additionnal libraries to copy into libs/armeabi
 #android.add_libs_armeabi = libs/android/*.so
@@ -177,21 +183,20 @@ android.skip_update = True
 #android.library_references =
 
 # (str) Android logcat filters to use
-android.logcat_filters = *:S python:D
+#android.logcat_filters = *:S python:D
 
 # (bool) Copy library instead of making a libpymodules.so
-android.copy_libs = 1
+#android.copy_libs = 1
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86
 android.arch = armeabi-v7a
-# android.arch = x86
 
 #
 # Python for android (p4a) specific
 #
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
-#p4a.source_dir =
+p4a.source_dir = /home/archiemeng/Programs/python-for-android
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
 #p4a.local_recipes =
@@ -201,6 +206,9 @@ android.arch = armeabi-v7a
 
 # (str) Bootstrap to use for android builds
 # p4a.bootstrap = sdl2
+
+# (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
+#p4a.port =
 
 
 #
