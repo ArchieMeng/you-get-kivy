@@ -1,0 +1,3 @@
+[submodule "you-get"]
+	path = you-get
+	url = https://github.com/ArchieMeng/you-get.git

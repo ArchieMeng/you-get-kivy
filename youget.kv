@@ -1,0 +1,51 @@
+<MyBigButt@Button>:
+    text_size: self.size
+    markup: True
+    halign: 'center'
+
+<VideoItem@BoxLayout>:
+    orientation: 'vertical'
+    id: video_item
+    Label:
+        id: video_title
+        text: video_item.video_title + '.' + video_item.video_ext
+        font_size: '12sp'
+    ProgressBar:
+    # Todo view data in data item to update values
+        id: video_progress_bar
+        value: video_item.download_info['received'] or 0 if video_item.download_info else 0
+        max: video_item.download_info['total_size'] or 100 if video_item.download_info else 100
+
+
+<YouGetWidget>:
+    orientation: 'vertical'
+    BoxLayout:
+        size_hint_y: 0.2
+        Label:
+            text: "You Get Kivy App"
+            text_size: (80, 80)
+            halign: 'center'
+    BoxLayout:
+        size_hint: (1.0, None)
+        height: '40sp'
+        TextInput:
+            height: self.font_size
+            text_size: (40, 40)
+            id: url_text
+            multiline: False
+            on_text_validate: video_list.add_video(str(self.text)); self.text = ""
+        MyBigButt:
+            text: 'Download'
+            text_size: (80, 80)
+            on_press: video_list.add_video(str(url_text.text))
+    VideoListView:
+        viewclass: 'VideoItem'
+        id: video_list
+        data: []
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(56)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+            padding: '4sp'
