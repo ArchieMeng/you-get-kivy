@@ -1,8 +1,11 @@
 import pickle
+import subprocess
 import traceback
+import mimetypes
 
 from kivy.app import App
 from kivy.clock import Clock, mainthread
+from kivy.utils import platform
 from kivy.properties import BooleanProperty, StringProperty, ObjectProperty
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.boxlayout import BoxLayout
@@ -15,14 +18,29 @@ from kivy.uix.recycleview.views import RecycleDataViewBehavior
 
 from videos_fetcher import *
 
+if platform == 'android':
+    # init android classes
+    from jnius import autoclass, cast
+    Intent = autoclass('android.content.Intent')
+    Uri = autoclass('android.net.Uri')
+    PythonActivity = autoclass('org.renpy.android.PythonActivity')
 
-you_get
+
+def get_file_dir():
+    if platform == 'android':
+        currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+        return currentActivity.getFilesDir()
+    else:
+        return '.'
+
+
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
     ''' Adds selection and focus behaviour to the view. '''
 
 
 class VideoItem(RecycleDataViewBehavior, BoxLayout):
+    # Todo add status indicator
     index = None
     selected = BooleanProperty(False)
     selectable = BooleanProperty(True)
@@ -36,6 +54,7 @@ class VideoItem(RecycleDataViewBehavior, BoxLayout):
         # schedule a task to update progress bar
         Clock.schedule_interval(lambda dt: self.set_progress_bar_values(), 1 / 4.)
         self.download_thread = None
+        self.download_dir_name = get_file_dir()
 
     def refresh_view_attrs(self, rv, index, data):
         ''' Catch and handle the view changes '''
@@ -53,6 +72,28 @@ class VideoItem(RecycleDataViewBehavior, BoxLayout):
                 'total_size': 100.
             }
 
+    def open_video(self):
+        # open video with system app
+        filePath = os.path.join(self.download_dir_name, self.video_filename)
+        if platform == 'android':
+            # do android open video file
+            intent = Intent(Intent.ACTION_VIEW)
+            mimetype = mimetypes.guess_type(filePath)[0]
+            intent.setDataAndType(
+                Uri.parse(filePath),
+                mimetype)
+            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+            currentActivity.startActivity(intent)
+        if sys.platform.startswith('darwin'):
+            # OS X
+            subprocess.call(('open', filePath))
+        elif os.name == 'nt':
+            # Windows
+            subprocess.call(('start ', filePath))
+        elif os.name == 'posix':
+            # Linux
+            subprocess.call(('xdg-open', filePath))
+
     @mainthread
     def set_progress_bar_values(self):
         info = self.get_download_info()
@@ -67,28 +108,37 @@ class VideoItem(RecycleDataViewBehavior, BoxLayout):
             return self.parent.select_with_touch(self.index, touch)
 
     def apply_selection(self, rv, index, is_selected):
-        # Todo implement resume / pause function
+        # Todo implement resume / pause animation
         # Todo implement video file open operation
         ''' Respond to the selection of items in the view. '''
         ''' Video items on_click function '''
         self.selected = is_selected
+        self.video_filename = '.'.join([self.video_title, self.video_ext])
         if is_selected:
-            print("select {}:{}".format(self.video_title, self.download_info))
+            print("select {}:{}".format(self.video_filename, self.download_info))
             # rv.validate_then_download(self.video_url, self.index)
             # change download status pause/resume
             download_info = self.get_download_info()
+            # Todo implement download function with popup warning
             if download_info:
                 download_info['stop'] = (not download_info['stop'])
                 # only one thread running
-                if not download_info['stop'] and \
+                if self.download_info['received'] != self.download_info['total_size'] and \
+                        not download_info['stop'] and \
                         (self.download_thread is None or not self.download_thread.is_alive()):
                     self.download_thread = Thread(
                         target=download,
                         args=(self.video_url,),
-                        kwargs={'download_info': download_info},
+                        kwargs={
+                            'download_info': download_info,
+                            'output_dir': self.download_dir_name
+                        },
                         daemon=True
                     )
                     self.download_thread.start()
+                elif self.download_info['received'] == self.download_info['total_size'] or \
+                        self.video_filename in os.listdir(self.download_dir_name):
+                    self.open_video()
 
 
 class VideoListView(RecycleView):
@@ -97,6 +147,7 @@ class VideoListView(RecycleView):
 
         super().__init__(**kwargs)
         self.executing_tasks = set()
+        self.download_dir_name = get_file_dir()
 
     def add_video_item(self, title, ext, url, **kwargs):
         index = len(self.data)
@@ -159,7 +210,9 @@ class VideoListView(RecycleView):
                 title="Error",
                 content=Label(
                     text="exception:{}\t{}happened".format(url.__class__, url),
-                    size_hint=(.4, None)
+                    size_hint=(.2, None),
+                    multiline=True,
+                    font_name="FZQKBYJT"
                 ),
                 size_hint=(.6, .4)
             )
@@ -179,7 +232,10 @@ class VideoListView(RecycleView):
                 download_thread = Thread(
                     target=download,
                     args=(url,),
-                    kwargs={'download_info': download_info},
+                    kwargs={
+                        'download_info': download_info,
+                        'output_dir': self.download_dir_name
+                    },
                     daemon=True
                 )
                 download_thread.start()
@@ -188,7 +244,9 @@ class VideoListView(RecycleView):
                     title="Error",
                     content=Label(
                         text="video url:{} doesn\'t exist".format(url),
-                        size_hint=(.4, None)
+                        size_hint=(.2, None),
+                        multiline=True,
+                        font_name="FZQKBYJT"
                     ),
                     size_hint=(.6, .4)
                 )
@@ -242,6 +300,11 @@ class YouGetApp(App):
         except FileNotFoundError:
             # bypass file not found
             pass
+
+        def print_file_path(tb):
+            print("app source file", os.path.realpath(__file__), tb)
+
+        Clock.schedule_once(print_file_path)
 
 
 if __name__ == "__main__":

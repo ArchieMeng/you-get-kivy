@@ -31,7 +31,6 @@ def download(url, **kwargs):
             you_get.any_download_playlist,
             urls=[url],
             playlist=False,
-            output_dir='.',
             merge=True,
             **kwargs
         )
